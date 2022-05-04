@@ -6,7 +6,17 @@ from bs4 import BeautifulSoup
 from requests_html import HTMLSession, AsyncHTMLSession
 
 
-def get_shs_from_bs(bs, cls_names, url):
+
+def get_bs(url):
+    session = HTMLSession()
+    resp = session.get(url)
+    resp.html.render(sleep = 1)
+    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
+    return bs
+
+
+def get_shs(cls_names, url):
+    bs = get_bs(url)
     df = pd.DataFrame(columns=CLS_NAME)
     for i, cls in enumerate(cls_names[:2]):
         df[CLS_NAME[i]] = list(map(lambda x: x.get_text(), bs.find_all(*cls)[:NUM_FROM_A_SITE]))
@@ -15,7 +25,9 @@ def get_shs_from_bs(bs, cls_names, url):
     return df
 
 
-def get_new_from_naver(bs, cls_names, url):
+def get_new_from_naver(cls_names, url):
+    bs = get_bs(url)
+
     df = pd.DataFrame(columns=CLS_NAME)
     for i, cls in enumerate(cls_names[:2]):
         df[CLS_NAME[i]] = list(map(lambda x: x.get_text(), bs.find_all(*cls)[:NUM_FROM_A_SITE]))
@@ -28,7 +40,9 @@ def get_new_from_naver(bs, cls_names, url):
     return df
 
 
-def get_new_from_coupang(bs, cls_names, url):
+def get_new_from_coupang(cls_names, url):
+    page = requests.get(url)
+    bs = BeautifulSoup(page.text, 'html.parser')
     df = pd.DataFrame(columns=CLS_NAME)
     for i, cls in enumerate(cls_names[:2]):
         df[CLS_NAME[i]] = list(map(lambda x: x.get_text(), bs.find_all(*cls)[:NUM_FROM_A_SITE]))
@@ -72,9 +86,7 @@ CLS_SH2 = [['span', 'ProductItemV2_title__1KDby'], ['p', 'ProductItemV2_price__1
 CLS_NEW1 = [['div', 'basicList_title__3P9Q7'], ['span', 'price_num__2WUXn']]
 CLS_NEW2 = [['div', 'name'], ['strong', 'price-value'], ['img', 'search-product-wrap-img']]
 
-app = Flask(__name__)
 
-@app.route('/sample/<keyword>')
 def main(keyword):
     url_sh1 = f'https://m.bunjang.co.kr/search/products?q={keyword}'  # 번개장터
     url_sh2 = f'https://m.joongna.com/search-list/product?searchword={keyword}'  # 중고나라
@@ -82,42 +94,27 @@ def main(keyword):
     url_new2 = f'https://www.coupang.com/np/search?component=&q={keyword}'  # 쿠팡
 
     ## 번개장터
-    session = AsyncHTMLSession()
-    resp = await session.get(url_sh1)
-    await resp.html.arender(sleep = 1)
-    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
-
-    sh_df = get_shs_from_bs(bs, CLS_SH1, url_sh1)
+    sh_df = get_shs(CLS_SH1, url_sh1)
 
     ## 중고나라
-    session = AsyncHTMLSession()
-    resp = await session.get(url_sh2)
-    await resp.html.arender(sleep = 1)
-    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
-
-    sh_df_ = get_shs_from_bs(bs, CLS_SH2, url_sh2)
+    sh_df_ = get_shs(CLS_SH2, url_sh2)
     sh_items = alysis_dfs(sh_df, sh_df_)
 
     ## 네이버쇼핑
     ###########################TODO 이미지 안됨
-    session = AsyncHTMLSession()
-    resp = await session.get(url_new1)
-    await resp.html.arender(sleep = 1)
-    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
-    new_df = get_new_from_naver(bs, CLS_NEW1, url_new1)
+    new_df = get_new_from_naver(CLS_NEW1, url_new1)
 
-    ## 하나쯤 더 있으면 좋은데 다나와는 안됨
-    ## 일단은 쿠팡
-    page = requests.get(url_new2)
-    bs = BeautifulSoup(page.text, 'html.parser')
-    new_df_ = get_new_from_coupang(bs, CLS_NEW2, url_new2)
+    ## 쿠팡
+    new_df_ = get_new_from_coupang(CLS_NEW2, url_new2)
     new_items = alysis_dfs(new_df, new_df_)
 
-
-    return json.dumps({
+    res = json.dumps({
         "new":new_items,
         "sh":sh_items
         })
+    return res
+
 
 if __name__ == "__main__":
-    app.run()
+    res = main('갤럭시 s22')
+    print(res)
