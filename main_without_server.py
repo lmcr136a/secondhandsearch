@@ -2,39 +2,21 @@ from flask import Flask, request
 import requests
 import pandas as pd
 import json
-import asyncio
-import pyppeteer
 from bs4 import BeautifulSoup
 from requests_html import HTMLSession, AsyncHTMLSession
 
 
-# def get_bs(url):
-#     session = HTMLSession()
-#     resp = session.get(url)
-#     resp.html.render(sleep = 1)
-#     return resp
 
-async def get_bs(url):
-    session = AsyncHTMLSession()
-    browser = await pyppeteer.launch({
-        'ignoreHTTPSErrors': True,
-        'headless': True,
-        'handleSIGINT': False,
-        'handleSIGTERM': False,
-        'handleSIGHUP': False
-    })
-    session._browser = browser
-
-    resp = await session.get(url)
-    await resp.html.arender()
-    await session.close()
-    return resp
+def get_bs(url):
+    session = HTMLSession()
+    resp = session.get(url)
+    resp.html.render(sleep = 1)
+    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
+    return bs
 
 
 def get_shs(cls_names, url):
-    resp = asyncio.run(get_bs(url))
-    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
-    
+    bs = get_bs(url)
     df = pd.DataFrame(columns=CLS_NAME)
     for i, cls in enumerate(cls_names[:2]):
         df[CLS_NAME[i]] = list(map(lambda x: x.get_text(), bs.find_all(*cls)[:NUM_FROM_A_SITE]))
@@ -44,8 +26,7 @@ def get_shs(cls_names, url):
 
 
 def get_new_from_naver(cls_names, url):
-    resp = asyncio.run(get_bs(url))
-    bs = BeautifulSoup(resp.html.raw_html, 'html.parser')
+    bs = get_bs(url)
 
     df = pd.DataFrame(columns=CLS_NAME)
     for i, cls in enumerate(cls_names[:2]):
@@ -106,12 +87,7 @@ CLS_NEW1 = [['div', 'basicList_title__3P9Q7'], ['span', 'price_num__2WUXn']]
 CLS_NEW2 = [['div', 'name'], ['strong', 'price-value'], ['img', 'search-product-wrap-img']]
 
 
-app = Flask(__name__)
-
-@app.route('/sample/<keyword>')
 def main(keyword):
-    #loop = asyncio.new_event_loop()
-    #asyncio.set_event_loop(loop)
     url_sh1 = f'https://m.bunjang.co.kr/search/products?q={keyword}'  # 번개장터
     url_sh2 = f'https://m.joongna.com/search-list/product?searchword={keyword}'  # 중고나라
     url_new1 = f'https://search.shopping.naver.com/search/all?query={keyword}'  # 네이버쇼핑
@@ -119,8 +95,6 @@ def main(keyword):
 
     ## 번개장터
     sh_df = get_shs(CLS_SH1, url_sh1)
-    print(sh_df)
-    print('번개장터 완료')
 
     ## 중고나라
     sh_df_ = get_shs(CLS_SH2, url_sh2)
@@ -138,12 +112,9 @@ def main(keyword):
         "new":new_items,
         "sh":sh_items
         })
-    print(res)
     return res
 
-@app.route('/')
-def home():
-    return 'Hello, world'
 
 if __name__ == "__main__":
-    app.run()
+    res = main('갤럭시 s22')
+    print(res)
