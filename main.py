@@ -80,6 +80,7 @@ def string_price_to_num(str_price):
 
 def alysis_dfs(df1, df2):
     df = pd.concat([df1, df2], axis=0)
+    df = df.fillna('')
 
     df['price'] = list(map(string_price_to_num, df['price']))  # 가격 숫자로
     df = df.sort_values('price')[:TOTAL_NUM].reset_index()  # 가격 정렬
