@@ -51,10 +51,9 @@ def get_new_from_naver(cls_names, url):
     for i, cls in enumerate(cls_names[:2]):
         df[CLS_NAME[i]] = list(map(lambda x: x.get_text(), bs.find_all(*cls)[:NUM_FROM_A_SITE]))
 
-    #############TODO
     imgs = list(map(lambda x: x['src'], bs.find_all('a',alt=df[CLS_NAME[0]])))
     if len(imgs) > NUM_FROM_A_SITE:
-        df[CLS_NAME[2]] = imgs[:NUM_FROM_A_SITE] ## 이렇게 나와야함
+        df[CLS_NAME[2]] = imgs[:NUM_FROM_A_SITE]
     df[CLS_NAME[3]] = url
     return df
 
@@ -110,8 +109,6 @@ app = Flask(__name__)
 
 @app.route('/sample/<keyword>')
 def main(keyword):
-    #loop = asyncio.new_event_loop()
-    #asyncio.set_event_loop(loop)
     url_sh1 = f'https://m.bunjang.co.kr/search/products?q={keyword}'  # 번개장터
     url_sh2 = f'https://m.joongna.com/search-list/product?searchword={keyword}'  # 중고나라
     url_new1 = f'https://search.shopping.naver.com/search/all?query={keyword}'  # 네이버쇼핑
@@ -119,15 +116,12 @@ def main(keyword):
 
     ## 번개장터
     sh_df = get_shs(CLS_SH1, url_sh1)
-    print(sh_df)
-    print('번개장터 완료')
 
     ## 중고나라
     sh_df_ = get_shs(CLS_SH2, url_sh2)
     sh_items = alysis_dfs(sh_df, sh_df_)
 
     ## 네이버쇼핑
-    ###########################TODO 이미지 안됨
     new_df = get_new_from_naver(CLS_NEW1, url_new1)
 
     ## 쿠팡
@@ -138,7 +132,6 @@ def main(keyword):
         "new":new_items,
         "sh":sh_items
         })
-    print(res)
     return res
 
 @app.route('/')
